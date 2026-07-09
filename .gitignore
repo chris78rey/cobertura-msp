@@ -1,0 +1,21 @@
+# Binaries
+cobertura_msp_linux
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Runtime / data
+coberturas/
+graphify-out/
+.env
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local-only helper with hardcoded credentials
+apply_dig_sync.go
