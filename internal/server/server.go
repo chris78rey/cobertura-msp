@@ -209,8 +209,8 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	freeGB := freeDiskGB(s.outDir)
-	if freeGB < 15 {
-		http.Error(w, fmt.Sprintf("espacio insuficiente: %.1f GB libres (mínimo 15 GB)", freeGB), 507)
+	if freeGB < 7 {
+		http.Error(w, fmt.Sprintf("espacio insuficiente: %.1f GB libres (mínimo 7 GB)", freeGB), 507)
 		return
 	}
 
@@ -812,8 +812,8 @@ func (s *Server) handleDisk(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"free_gb":     freeGB,
 		"total_gb":    totalGB,
-		"min_free_gb": 15.0,
-		"ok":          freeGB >= 15.0,
+		"min_free_gb": 7.0,
+		"ok":          freeGB >= 7.0,
 	})
 }
 

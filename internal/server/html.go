@@ -238,7 +238,7 @@ async function updateDisk() {
     const pct = d.total_gb > 0 ? (d.free_gb/d.total_gb*100) : 70;
     fill.style.width = pct + '%';
     if (d.ok) { fill.className='bar-fill bar-ok'; text.textContent = d.free_gb.toFixed(1)+' GB libres de '+d.total_gb.toFixed(0)+' GB'; warn.classList.remove('show'); diskOK=true; }
-    else { fill.className = d.free_gb>5?'bar-fill bar-warn':'bar-fill bar-crit'; text.textContent='⚠️ '+d.free_gb.toFixed(1)+' GB libres'; warn.classList.add('show'); diskOK=false; }
+    else { fill.className = d.free_gb>7?'bar-fill bar-warn':'bar-fill bar-crit'; text.textContent='⚠️ '+d.free_gb.toFixed(1)+' GB libres'; warn.classList.add('show'); diskOK=false; }
   } catch(e) {}
 }
 updateDisk(); setInterval(updateDisk, 30000);
