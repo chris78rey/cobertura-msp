@@ -232,23 +232,7 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 	s.mu.Unlock()
 
 	var jobIDs []string
-	skipped := 0
 	for _, t := range req.Tramites {
-		// Verificar si ya tiene PDFs completos (skippear si ya existen)
-		tramDir := filepath.Join(s.outDir, fmt.Sprintf("%d", t))
-		if pdfs, _ := os.ReadDir(tramDir); len(pdfs) > 0 {
-			hasPDF := false
-			for _, f := range pdfs {
-				if strings.HasPrefix(f.Name(), "CC_") && strings.HasSuffix(f.Name(), ".pdf") {
-					hasPDF = true
-					break
-				}
-			}
-			if hasPDF {
-				skipped++
-				continue
-			}
-		}
 		id := fmt.Sprintf("%s_%d_%d", req.ClientID, t, time.Now().UnixNano())
 		s.mu.Lock()
 		s.jobs[id] = &JobStatus{ID: id, Tramite: t, Status: "pending", StartedAt: time.Now().Format(time.RFC3339), ClientID: req.ClientID, Token: req.Token}
@@ -259,7 +243,7 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 	go s.runGeneration(req.Tramites, req.Workers)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"job_ids": jobIDs, "started": true, "skipped": skipped})
+	json.NewEncoder(w).Encode(map[string]interface{}{"job_ids": jobIDs, "started": true, "skipped": 0})
 }
 
 func (s *Server) runGeneration(tramites []int64, workers int) {
@@ -345,6 +329,15 @@ func (s *Server) processTramite(tramiteID int64, jobID string, browser *rod.Brow
 	jobs := tr.BuildJobs()
 	tramDir := filepath.Join(s.outDir, fmt.Sprintf("%d", tramiteID))
 	os.MkdirAll(tramDir, 0755)
+	// Regenerar siempre con las fechas actuales de Oracle y eliminar PDFs
+	// anteriores que podrían pertenecer a otra cantidad de tandas.
+	if entries, readErr := os.ReadDir(tramDir); readErr == nil {
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "CC_") && strings.HasSuffix(entry.Name(), ".pdf") {
+				_ = os.Remove(filepath.Join(tramDir, entry.Name()))
+			}
+		}
+	}
 
 	s.updateJob(jobID, func(js *JobStatus) {
 		js.Total = len(jobs)
@@ -361,13 +354,13 @@ func (s *Server) processTramite(tramiteID int64, jobID string, browser *rod.Brow
 	var lastErr string
 	for _, j := range jobs {
 		outputName := fmt.Sprintf("CC_%02d", j.PDFNum)
-		
+
 		// Convertir fecha de DD-MM-YYYY (Oracle) a YYYY-MM-DD (Node)
 		fechaNode := j.Fecha
 		if parts := strings.Split(j.Fecha, "-"); len(parts) == 3 {
 			fechaNode = parts[2] + "-" + parts[1] + "-" + parts[0]
 		}
-		
+
 		cmd := exec.Command("node", genScript,
 			"--cedula", j.Cedula,
 			"--fecha", fechaNode,
@@ -376,7 +369,7 @@ func (s *Server) processTramite(tramiteID int64, jobID string, browser *rod.Brow
 		)
 		cmd.Dir = nodeDir
 		cmd.Env = append(os.Environ(), "COBERTURA_TLS_INSECURE=true")
-		
+
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[NODE] Error generate_pdf.js (%s): %v\n%s\n", j.Cedula, err, string(output[:min(300, len(output))]))
@@ -434,7 +427,12 @@ func (s *Server) processTramite(tramiteID int64, jobID string, browser *rod.Brow
 	})
 }
 
-func min(a, b int) int { if a < b { return a }; return b }
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 func (s *Server) updateJob(id string, fn func(*JobStatus)) {
 	s.mu.Lock()

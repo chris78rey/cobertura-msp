@@ -80,7 +80,7 @@ func GetTramite(db *sql.DB, schema string, digTramite int64) (*Tramite, error) {
 }
 
 func calcTandas(t *Tramite) int {
-	if t.DIG_FECHA_ALTA == "" || t.DIG_FECHA_ALTA == t.DIG_FECHA_PLANILLA {
+	if t.DIG_FECHA_ALTA == "" {
 		return 1
 	}
 	return 2
@@ -105,11 +105,11 @@ func (t *Tramite) BuildJobs() []PDFJob {
 		}
 	} else {
 		for _, c := range cedulas {
-			jobs = append(jobs, PDFJob{Cedula: c, Fecha: t.DIG_FECHA_PLANILLA, PDFNum: pdfNum, Tanda: 1})
+			jobs = append(jobs, PDFJob{Cedula: c, Fecha: t.DIG_FECHA_HASTA, PDFNum: pdfNum, Tanda: 1})
 			pdfNum++
 		}
 		for _, c := range cedulas {
-			jobs = append(jobs, PDFJob{Cedula: c, Fecha: t.DIG_FECHA_HASTA, PDFNum: pdfNum, Tanda: 2})
+			jobs = append(jobs, PDFJob{Cedula: c, Fecha: t.DIG_FECHA_ALTA, PDFNum: pdfNum, Tanda: 2})
 			pdfNum++
 		}
 	}
