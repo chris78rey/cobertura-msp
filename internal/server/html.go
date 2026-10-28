@@ -294,8 +294,11 @@ async function doQuery() {
   const from = parseInt(document.getElementById('from').value), to = parseInt(document.getElementById('to').value);
   if (!from||!to||from>to) { toast('Rango inválido', false); return; }
   try {
-    const resp = await fetch('/api/query', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to})});
-    coberturas = await resp.json(); renderResults();
+    const resp = await fetch(withToken('/api/query'), {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({from,to})});
+    if (!resp.ok) { toast('Error al consultar: '+await resp.text(), false); return; }
+    const data = await resp.json();
+    if (!Array.isArray(data)) { toast('Respuesta inválida del servidor', false); return; }
+    coberturas = data; renderResults();
     document.getElementById('results-card').classList.remove('hidden');
     if (coberturas.length===0) toast('No se encontraron coberturas', false);
     else toast(coberturas.length+' coberturas encontradas', true);

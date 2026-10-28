@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -105,9 +106,9 @@ func StartBrowser() (*rod.Browser, error) {
 }
 
 type Generator struct {
-	OutputDir  string
-	MaxRetries int
-	browser    *rod.Browser
+	OutputDir   string
+	MaxRetries  int
+	browser     *rod.Browser
 	ownsBrowser bool
 }
 
@@ -261,15 +262,30 @@ func (g *Generator) tryGenerate(cedula, fecha string, pdfNum int) (retPath strin
 		return "", fmt.Errorf("bad date: %s", fecha)
 	}
 	targetDay := strings.TrimLeft(parts[0], "0")
+	targetYear, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return "", fmt.Errorf("bad date year: %s", fecha)
+	}
+	targetMonth, err := strconv.Atoi(parts[1])
+	if err != nil || targetMonth < 1 || targetMonth > 12 {
+		return "", fmt.Errorf("bad date month: %s", fecha)
+	}
+	now := time.Now()
+	monthDelta := (targetYear-now.Year())*12 + targetMonth - int(now.Month())
+	arrowIndex := 0
+	if monthDelta > 0 {
+		arrowIndex = 1
+		monthDelta = -monthDelta
+	}
 
-	page.Eval(`() => {
+	page.Eval(`(steps, arrowIndex) => {
 		const dialog = document.querySelector('.MuiDialog-root');
 		if (!dialog) return;
 		const arrows = dialog.querySelectorAll('.MuiPickersArrowSwitcher-root svg');
-		if (arrows.length >= 2) { arrows[0].closest('button').click(); return; }
-		const btns = dialog.querySelectorAll('button');
-		if (btns.length >= 1) btns[0].click();
-	}`)
+		if (arrows.length < 2) return;
+		const button = arrows[arrowIndex].closest('button');
+		for (let i = 0; i < steps; i++) button?.click();
+	}`, -monthDelta, arrowIndex)
 	time.Sleep(200 * time.Millisecond)
 
 	page.Eval(`(day) => {
@@ -370,15 +386,30 @@ func (g *Generator) tryGenerateOnPage(page *rod.Page, cedula, fecha string, pdfN
 		return "", fmt.Errorf("bad date: %s", fecha)
 	}
 	targetDay := strings.TrimLeft(parts[0], "0")
+	targetYear, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return "", fmt.Errorf("bad date year: %s", fecha)
+	}
+	targetMonth, err := strconv.Atoi(parts[1])
+	if err != nil || targetMonth < 1 || targetMonth > 12 {
+		return "", fmt.Errorf("bad date month: %s", fecha)
+	}
+	now := time.Now()
+	monthDelta := (targetYear-now.Year())*12 + targetMonth - int(now.Month())
+	arrowIndex := 0
+	if monthDelta > 0 {
+		arrowIndex = 1
+		monthDelta = -monthDelta
+	}
 
-	page.Eval(`() => {
+	page.Eval(`(steps, arrowIndex) => {
 		const dialog = document.querySelector('.MuiDialog-root');
 		if (!dialog) return;
 		const arrows = dialog.querySelectorAll('.MuiPickersArrowSwitcher-root svg');
-		if (arrows.length >= 2) { arrows[0].closest('button').click(); return; }
-		const btns = dialog.querySelectorAll('button');
-		if (btns.length >= 1) btns[0].click();
-	}`)
+		if (arrows.length < 2) return;
+		const button = arrows[arrowIndex].closest('button');
+		for (let i = 0; i < steps; i++) button?.click();
+	}`, -monthDelta, arrowIndex)
 	time.Sleep(200 * time.Millisecond)
 
 	page.Eval(`(day) => {
